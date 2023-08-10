@@ -1,8 +1,12 @@
 const express = require('express');
 const morgan = require('morgan');
 
-const categoryRoutes = require('./routes/categoryRoutes.js');
-const errorController = require('./controllers/errorController.js');
+const AppError = require('./utils/appError');
+const categoryRoutes = require('./routes/categoryRoutes');
+const errorController = require('./controllers/errorController');
+const subCatRoutes = require('./routes/subCatRoutes');
+const brandRoutes = require('./routes/brandRoutes');
+
 const app = express();
 
 if (process.env.NODE_ENV === 'development') {
@@ -12,10 +16,12 @@ if (process.env.NODE_ENV === 'development') {
 app.use(
   express.json({
     limit: '10kb',
-  })
+  }),
 );
 
 app.use('/api/v1/category', categoryRoutes);
+app.use('/api/v1/subcategory', subCatRoutes);
+app.use('/api/v1/brand', brandRoutes);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!!`, 404));
