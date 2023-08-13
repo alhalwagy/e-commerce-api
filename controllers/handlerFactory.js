@@ -21,19 +21,20 @@ exports.createOne = (Model) =>
     });
   });
 
-exports.getAll = (Model) =>
+exports.getAll = (Model, searchModelName) =>
   catchAsync(async (req, res, next) => {
     let filter = {};
     if (req.params.categoryId) {
       filter = { categoryId: req.params.categoryId };
     }
     const features = new APIFeatures(Model.find(filter), req.query)
-      .paginate()
+      .paginate(await Model.countDocuments())
       .sort()
       .limitFields()
-      .filter();
-    const documents = await features.query;
-
+      .filter()
+      .search(searchModelName);
+    const { query } = features;
+    const documents = await query;
     res.status(200).json({
       status: 'success',
       result: documents.length,
@@ -61,9 +62,15 @@ exports.getOne = (Model) =>
 
 exports.updateOne = (Model) =>
   catchAsync(async (req, res, next) => {
+    //FOR UPDATE SLUG WITH UPDATE NAME
     if (req.body.name) {
       req.body.slug = slugify(req.body.name);
     }
+    //FOR UPDATE SLUG WITH UPDATE TITLE
+    if (req.body.title) {
+      req.body.slug = slugify(req.body.title);
+    }
+
     const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,

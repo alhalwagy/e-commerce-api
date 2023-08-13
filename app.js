@@ -6,6 +6,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const errorController = require('./controllers/errorController');
 const subCatRoutes = require('./routes/subCatRoutes');
 const brandRoutes = require('./routes/brandRoutes');
+const productRoutes = require('./routes/productRoutes')
 
 const app = express();
 
@@ -22,6 +23,8 @@ app.use(
 app.use('/api/v1/category', categoryRoutes);
 app.use('/api/v1/subcategory', subCatRoutes);
 app.use('/api/v1/brand', brandRoutes);
+app.use('/api/v1/product', productRoutes);
+
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!!`, 404));

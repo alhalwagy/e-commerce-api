@@ -5,15 +5,20 @@ class APIFeatures {
   }
 
   filter() {
-    // eslint-disable-next-line node/no-unsupported-features/es-syntax
-    const queryObj = { ...this.queryString };
-    const excludeFields = ['sort', 'page', 'limit', 'fields'];
-    excludeFields.forEach((el) => delete queryObj[el]);
-    //1B)ADVANED FILTER
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    if (!this.queryString.keyword) {
+      // eslint-disable-next-line node/no-unsupported-features/es-syntax
+      const queryObj = { ...this.queryString };
+      const excludeFields = ['sort', 'page', 'limit', 'fields'];
+      excludeFields.forEach((el) => delete queryObj[el]);
+      //1B)ADVANED FILTER
+      let queryStr = JSON.stringify(queryObj);
+      queryStr = queryStr.replace(
+        /\b(gte|gt|lte|lt)\b/g,
+        (match) => `$${match}`,
+      );
 
-    this.query = this.query.find(JSON.parse(queryStr));
+      this.query = this.query.find(JSON.parse(queryStr));
+    }
     return this;
   }
 
@@ -38,12 +43,46 @@ class APIFeatures {
     }
     return this;
   }
-  
-  paginate() {
+
+  paginate(countDocuments) {
     const page = this.queryString.page * 1 || 1;
     const limit = this.queryString.limit * 1 || 100;
     const skip = (page - 1) * limit;
+    //pagination Information
+
+    const paginationInfo = {};
+
+    paginationInfo.currentPage = page;
+    paginationInfo.limit = limit;
+    paginationInfo.countDocuments = countDocuments;
+    const endOfCurrentPage = page * limit;
+    if (endOfCurrentPage < countDocuments) {
+      paginationInfo.next = page + 1;
+    }
+    if (skip > 0) {
+      paginationInfo.prev = page - 1;
+    }
+    this.paginationInfo = paginationInfo;
     this.query = this.query.skip(skip).limit(limit);
+    return this;
+  }
+
+  search(modelName) {
+    if (this.queryString.keyword) {
+      if (modelName === 'Product') {
+        const searcher = {};
+        searcher.$or = [
+          { title: { $regex: this.queryString.keyword, $options: 'i' } },
+          { description: { $regex: this.queryString.keyword, $options: 'i' } },
+        ];
+        this.query = this.query.find(searcher);
+      } else {
+        const searcher = {
+          name: { $regex: this.queryString.keyword, $options: 'i' },
+        };
+        this.query = this.query.find(searcher);
+      }
+    }
     return this;
   }
 }
