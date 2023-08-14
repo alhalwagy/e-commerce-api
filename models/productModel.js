@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
-const AppError = require('../utils/appError');
 
 const productSchema = new mongoose.Schema(
   {
@@ -51,7 +50,7 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Product Image cover is required'],
     },
     images: [String],
-    category: {
+    categoryId: {
       type: mongoose.Schema.ObjectId,
       ref: 'Category',
       required: [true, 'Product must be belong to category'],

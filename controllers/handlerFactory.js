@@ -33,8 +33,8 @@ exports.getAll = (Model, searchModelName) =>
       .limitFields()
       .filter()
       .search(searchModelName);
-    const { query } = features;
-    const documents = await query;
+
+    const documents = await features.query;
     res.status(200).json({
       status: 'success',
       result: documents.length,
@@ -44,10 +44,11 @@ exports.getAll = (Model, searchModelName) =>
     });
   });
 
-exports.getOne = (Model) =>
+exports.getOne = (Model, popOptions) =>
   catchAsync(async (req, res, next) => {
-    const document = await Model.findById(req.params.id);
-
+    let query = await Model.findById(req.params.id);
+    if (popOptions) query = query.populate(popOptions);
+    const document = await query;
     if (!document) {
       return next(new AppError('No document found with this ID', 404));
     }

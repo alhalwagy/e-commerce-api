@@ -15,7 +15,11 @@ router
 router
   .route('/:id')
   .get(categoryController.getCategory)
-  .patch(categoryController.updateCategory)
+  .patch(
+    categoryController.uploadCategoryImage,
+    categoryController.resizeCategoryImage,
+    categoryController.updateCategory,
+  )
   .delete(categoryController.deleteCategory);
 
 module.exports = router;
