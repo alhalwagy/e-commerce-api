@@ -6,6 +6,7 @@ const APIFeatures = require('../utils/apiFeatures');
 
 exports.createOne = (Model) =>
   catchAsync(async (req, res, next) => {
+    //for create in nested route
     if (!req.body.categoryId) {
       // eslint-disable-next-line no-unused-expressions
       req.body.categoryId = req.params.categoryId;

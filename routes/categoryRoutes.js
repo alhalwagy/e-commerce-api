@@ -18,6 +18,7 @@ router
   .patch(
     categoryController.uploadCategoryImage,
     categoryController.resizeCategoryImage,
+    
     categoryController.updateCategory,
   )
   .delete(categoryController.deleteCategory);
