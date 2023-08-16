@@ -12,7 +12,7 @@ router
 
 router.patch('/updateUserPassword/:id', userController.updateUserPassword);
 router.post('/signup', authController.signup);
-
+router.post('/login', authController.login);
 router
   .route('/:id')
   .get(userController.getUser)

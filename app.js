@@ -1,6 +1,8 @@
+/* eslint-disable import/no-extraneous-dependencies */
 const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 
 const AppError = require('./utils/appError');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -21,6 +23,7 @@ app.use(
     limit: '10kb',
   }),
 );
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/v1/category', categoryRoutes);

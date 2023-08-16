@@ -2,6 +2,7 @@ const express = require('express');
 
 const categoryController = require('../controllers/categoryController');
 const subCatRoutes = require('./subCatRoutes');
+const authController = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -9,7 +10,7 @@ router.use('/:categoryId/subcategories', subCatRoutes);
 
 router
   .route('/')
-  .post(categoryController.createCategory)
+  .post(authController.protect, categoryController.createCategory)
   .get(categoryController.getAllCategories);
 
 router
@@ -18,7 +19,7 @@ router
   .patch(
     categoryController.uploadCategoryImage,
     categoryController.resizeCategoryImage,
-    
+
     categoryController.updateCategory,
   )
   .delete(categoryController.deleteCategory);
