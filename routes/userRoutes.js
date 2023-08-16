@@ -7,20 +7,42 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(userController.getAllUser)
-  .post(userController.createUser);
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    userController.getAllUser,
+  )
+  .post(
+    authController.protect,
+    authController.restrictTo('admin'),
+    userController.createUser,
+  );
 
-router.patch('/updateUserPassword/:id', userController.updateUserPassword);
+router.patch(
+  '/updateUserPassword/:id',
+  authController.protect,
+  userController.updateUserPassword,
+);
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 router
   .route('/:id')
-  .get(userController.getUser)
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    userController.getUser,
+  )
   .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
     userController.uploadUserImage,
     userController.resizeUserImage,
     userController.updateUser,
   )
-  .delete(userController.deleteUser);
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    userController.deleteUser,
+  );
 
 module.exports = router;

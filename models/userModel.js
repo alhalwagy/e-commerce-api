@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ['user', 'manager', 'admin'],
       default: 'user',
     },
   },
@@ -74,7 +74,7 @@ userSchema.pre('save', function (next) {
 });
 
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || this.isNew) return next();
 
   this.password = await bcrypt.hash(this.password, 14);
   this.passwordConfirm = undefined;

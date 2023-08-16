@@ -66,8 +66,6 @@ exports.protect = catchAsync(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.cookies.jwt) {
-    console.log(req.cookies);
-
     token = req.cookies.jwt;
   }
 
@@ -98,3 +96,17 @@ exports.protect = catchAsync(async (req, res, next) => {
   res.locals.user = freshUser;
   next();
 });
+
+exports.restrictTo =
+  (...roles) =>
+  (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError(
+          "You don't have the permission to access this service ",
+          403,
+        ),
+      );
+    }
+    next();
+  };
