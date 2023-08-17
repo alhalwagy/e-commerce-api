@@ -1,8 +1,9 @@
 /* eslint-disable import/no-extraneous-dependencies */
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
-const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema(
   {
@@ -57,10 +58,18 @@ const userSchema = new mongoose.Schema(
       },
     },
     passwordChangedAt: Date,
+    resetPasswordNumber: String,
+    passwordResetExpires: Date,
+    passwordResetVerified: Boolean,
+
     role: {
       type: String,
       enum: ['user', 'manager', 'admin'],
       default: 'user',
+    },
+    active: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -107,6 +116,21 @@ userSchema.methods.checkPasswordChanged = function (JWTTimestamps) {
     return JWTTimestamps < changedTimestamps;
   }
   return false;
+};
+
+userSchema.methods.createRandomNumberForChangePass = async function () {
+  const randomNum = await Math.floor(
+    Math.random() * 899999 + 100000,
+  ).toString();
+
+  this.resetPasswordNumber = crypto
+    .createHash('sha256')
+    .update(randomNum)
+    .digest('hex');
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  this.passwordResetVerified = false;
+  return randomNum;
 };
 
 const User = mongoose.model('User', userSchema);
