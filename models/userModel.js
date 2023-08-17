@@ -1,9 +1,9 @@
 /* eslint-disable import/no-extraneous-dependencies */
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
+const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema(
   {
@@ -58,10 +58,9 @@ const userSchema = new mongoose.Schema(
       },
     },
     passwordChangedAt: Date,
-    resetPasswordNumber: String,
-    passwordResetExpires: Date,
-    passwordResetVerified: Boolean,
-
+    passwordRestCode: String,
+    passwordRestExpires: Date,
+    passwordRestIsused: Boolean,
     role: {
       type: String,
       enum: ['user', 'manager', 'admin'],
@@ -70,6 +69,7 @@ const userSchema = new mongoose.Schema(
     active: {
       type: Boolean,
       default: true,
+      select: false,
     },
   },
   {
@@ -82,13 +82,27 @@ userSchema.pre('save', function (next) {
   next();
 });
 
+
+userSchema.pre(/^find/, function (next) {
+  //this points for current query
+  this.find({ active: { $ne: false } });
+  next();
+});
+
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || this.isNew) return next();
+  if (!this.isModified('password')) {
+    return next();
+  }
 
   this.password = await bcrypt.hash(this.password, 14);
   this.passwordConfirm = undefined;
-  this.passwordChangedAt = Date.now();
+  next();
+});
 
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+
+  this.passwordChangedAt = Date.now() - 1000;
   next();
 });
 
@@ -118,18 +132,15 @@ userSchema.methods.checkPasswordChanged = function (JWTTimestamps) {
   return false;
 };
 
-userSchema.methods.createRandomNumberForChangePass = async function () {
-  const randomNum = await Math.floor(
-    Math.random() * 899999 + 100000,
-  ).toString();
-
-  this.resetPasswordNumber = crypto
+userSchema.methods.CreatePasswordResetCode = function () {
+  const randomNum = Math.floor(100000 + Math.random() * 900000).toString();
+  this.passwordRestCode = crypto
     .createHash('sha256')
     .update(randomNum)
     .digest('hex');
 
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
-  this.passwordResetVerified = false;
+  this.passwordRestExpires = Date.now() + 10 * 60 * 1000;
+  this.passwordRestIsused = false;
   return randomNum;
 };
 

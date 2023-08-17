@@ -1,10 +1,11 @@
 const { promisify } = require('util');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const User = require('../models/userModel');
-const sendEmail = require('../utils/sendEmail');
+const sendEmail = require('../utils/email');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECURE, {
@@ -113,80 +114,83 @@ exports.restrictTo =
   };
 
 exports.forgetPassword = catchAsync(async (req, res, next) => {
-  //Get user data
+  //get user ,check if exist
   const user = await User.findOne({ email: req.body.email });
+
   if (!user) {
-    return next(new AppError('There is no user with this email', 404));
+    return next(new AppError('No user found with this email', 404));
   }
-  //generate and hash random number from 6 digits and save to database
-  const randomNum = user.createRandomNumberForChangePass();
+  const randomNum = user.CreatePasswordResetCode();
   await user.save({ validateBeforeSave: false });
-  const message = `Hi ${user.name},\n We received a request to reset the password on your E-shop Account. \n ${randomNum} \n Enter this code to complete the reset. \n Thanks for helping us keep your account secure.\n The E-shop Team`;
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Your password reset code (valid for 10 min)',
-      message,
-    });
-  } catch (err) {
-    user.passwordResetCode = undefined;
-    user.passwordResetExpires = undefined;
-    user.passwordResetVerified = undefined;
+  console.log(user);
 
-    await user.save();
-    return next(new AppError('There is an error in sending email', 500));
-  }
-
-  res
-    .status(200)
-    .json({ status: 'Success', message: 'Reset code sent to email' });
+  await sendEmail({
+    to: user.email,
+    subject: 'Your password reset code (valid for 10 minutes',
+    message: `
+Hi ${user.name}, \n
+Enter this code to complete the reset. \n
+${randomNum} \n
+Thanks for helping us keep your account secure. \n
+The e-commerce Team \n
+`,
+  });
+  res.status(200).json({
+    status: 'success',
+    message: 'Reset code passed to your mail, Please check your inbox mails',
+  });
 });
 
-exports.verifyPassResetCode = catchAsync(async (req, res, next) => {
-  // 1) Get user based on reset code
-  const hashedResetCode = crypto
+exports.verifyResetCode = catchAsync(async (req, res, next) => {
+  hashedResetCode = crypto
     .createHash('sha256')
-    .update(req.body.resetCode)
+    .update(req.body.passwordRestCode)
     .digest('hex');
-
+  console.log(hashedResetCode);
   const user = await User.findOne({
-    passwordResetCode: hashedResetCode,
-    passwordResetExpires: { $gt: Date.now() },
+    passwordRestCode: hashedResetCode,
+    passwordRestExpires: { $gt: Date.now() },
   });
+  console.log(user);
   if (!user) {
-    return next(new AppError('Reset code invalid or expired'));
+    return next(
+      new AppError(
+        'Invalid password Reset Code, check code from mail again!',
+        404,
+      ),
+    );
   }
-
-  // 2) Reset code valid
-  user.passwordResetVerified = true;
-  await user.save();
+  user.passwordRestIsused = true;
+  user.passwordRestCode = undefined;
+  user.passwordRestExpires = undefined;
+  user.save({ validateBeforeSave: false });
 
   res.status(200).json({
-    status: 'Success',
+    status: 'success',
   });
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  // 1) Get user based on email
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
+    return next(new AppError('No user found with this email', 404));
+  }
+
+  if (!user.passwordRestIsused) {
     return next(
-      new AppError(`There is no user with email ${req.body.email}`, 404),
+      new AppError(
+        'Invalid password Reset Code, check code from mail again!',
+        404,
+      ),
     );
   }
-
-  // 2) Check if reset code verified
-  if (!user.passwordResetVerified) {
-    return next(new AppError('Reset code not verified', 400));
-  }
-
-  user.password = req.body.newPassword;
-  user.passwordResetCode = undefined;
-  user.passwordResetExpires = undefined;
-  user.passwordResetVerified = undefined;
-
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordRestIsused = undefined;
+  user.passwordChangedAt = Date.now();
   await user.save();
-
-  // 3) if everything is ok, generate token
-  createSendToken(user, 200, req, res);
+  res.status(200).json({
+    status: 'success',
+    data: 'Password Updated !!',
+  });
 });

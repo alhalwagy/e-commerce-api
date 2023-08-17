@@ -1,46 +1,27 @@
-const crypto = require('crypto');
-
 const multer = require('multer');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
 const User = require('../models/userModel');
 const factory = require('./handlerFactory');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(obj).forEach((el) => {
+    if (allowedFields.includes(el)) {
+      newObj[el] = obj[el];
+    }
+  });
+  return newObj;
+};
+
 exports.createUser = factory.createOne(User);
 exports.updateUser = factory.updateOne(User);
 exports.deleteUser = factory.deleteOne(User);
 exports.getUser = factory.getOne(User);
 exports.getAllUser = factory.getAll(User);
-
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECURE, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
-
-const createSendToken = (user, statusCode, req, res) => {
-  const token = signToken(user._id);
-  const cookieOptions = {
-    expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
-    ),
-    httpOnly: true,
-    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
-  };
-  res.cookie('jwt', token, cookieOptions);
-  user.password = undefined;
-  res.status(statusCode).json({
-    status: 'success',
-    token,
-    data: {
-      user,
-    },
-  });
-};
 
 const multerStorage = multer.memoryStorage();
 
@@ -63,7 +44,6 @@ exports.uploadUserImage = upload.fields([
 ]);
 
 //use sharp package to image preprocessing
-
 exports.resizeUserImage = catchAsync(async (req, res, next) => {
   if (!req.files.image) {
     return next();
@@ -96,62 +76,70 @@ exports.updateUserPassword = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.changeUserPassword = catchAsync(async (req, res, next) => {
-  const document = await User.findByIdAndUpdate(
-    req.params.id,
-    {
-      password: await bcrypt.hash(req.body.password, 12),
-      passwordChangedAt: Date.now(),
-    },
-    {
-      new: true,
-    },
-  );
-
-  if (!document) {
-    return next(new AppError(`No document for this id ${req.params.id}`, 404));
+exports.getUserLoggedData = catchAsync(async (req, res, next) => {
+  const userData = await User.findById(req.user.id);
+  if (!userData) {
+    return next(new AppError('User not found. Please log in again.'));
   }
-  res.status(200).json({ data: document });
-});
-
-exports.getLoggedUserData = catchAsync(async (req, res, next) => {
-  req.params.id = req.user._id;
-  next();
-});
-
-exports.deleteLoggedUserData = catchAsync(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user._id, { active: false });
-
-  res.status(204).json({ status: 'Success' });
-});
-
-exports.updateLoggedUserData = catchAsync(async (req, res, next) => {
-  const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
+  res.status(200).json({
+    status: 'success',
+    data: {
+      userData,
     },
-    { new: true },
-  );
-
-  res.status(200).json({ data: updatedUser });
+  });
 });
 
-exports.updateLoggedUserPassword = catchAsync(async (req, res, next) => {
-  // 1) Update user password based user payload (req.user._id)
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      password: await bcrypt.hash(req.body.password, 12),
-      passwordChangedAt: Date.now(),
-    },
-    {
-      new: true,
-    },
-  );
+exports.updateMyPassword = catchAsync(async (req, res, next) => {
+  const userData = await User.findById(req.user.id);
+  if (!userData) {
+    return next(new AppError('User not found. Please log in again.'));
+  }
+  if (!userData.correctPassword(req.body.currentPassword, req.user.password)) {
+    return next(new AppError('Your current password is wrong.', 401));
+  }
 
-  // 2) Generate token
-  createSendToken(user, 201, req, res);
+  userData.password = req.body.password;
+  userData.passwordConfirm = req.body.passwordConfirm;
+  await userData.save();
+  res.status(200).json({
+    status: 'success',
+  });
 });
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  if (req.body.password || req.body.passwordConfirm) {
+    return next(
+      new AppError(
+        'This route is not for password updates. Please use /updateMyPassword.',
+        400,
+      ),
+    );
+  }
+
+  //2)Filtered out unwanted fields that are not allowed to be updated
+  const filteredBody = filterObj(req.body, 'name', 'email', 'phone');
+  if (req.file) filteredBody.image = req.file.filename;
+
+  //3)Update the user document
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+    new: true,
+    runValidators: true,
+  });
+  res.status(200).json({
+    status: 'success',
+    data: {
+      user: updatedUser,
+    },
+  });
+});
+
+exports.deleteMe = catchAsync(async (req, res, next) => {
+  await User.findByIdAndUpdate(req.user.id, { active: false });
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
+  });
+});
+
+
