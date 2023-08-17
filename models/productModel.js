@@ -85,6 +85,8 @@ const productSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   },
 );
 
@@ -130,10 +132,16 @@ productSchema.pre('save', function (next) {
 
 productSchema.pre(/^find/, function (next) {
   this.populate({
-    path: 'category',
+    path: 'categoryId',
     select: 'name -_id',
   });
   next();
+});
+
+productSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'product',
+  localField: '_id',
 });
 
 const Product = mongoose.model('Product', productSchema);

@@ -2,8 +2,11 @@ const express = require('express');
 
 const productController = require('../controllers/productController');
 const authController = require('../controllers/authController');
+const reviewRoutes = require('./reviewRoutes');
 
 const router = express.Router();
+
+router.use('/:productId/reviews', reviewRoutes);
 
 router
   .route('/')

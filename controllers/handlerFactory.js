@@ -53,7 +53,7 @@ exports.getOne = (Model, popOptions) =>
     if (!document) {
       return next(new AppError('No document found with this ID', 404));
     }
-
+    await document.save();
     res.status(200).json({
       status: 'success',
       data: {
