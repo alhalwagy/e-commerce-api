@@ -5,15 +5,8 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 
 const AppError = require('./utils/appError');
-const categoryRoutes = require('./routes/categoryRoutes');
 const errorController = require('./controllers/errorController');
-const subCatRoutes = require('./routes/subCatRoutes');
-const brandRoutes = require('./routes/brandRoutes');
-const productRoutes = require('./routes/productRoutes');
-const userRoutes = require('./routes/userRoutes');
-const reviewRoutes = require('./routes/reviewRoutes');
-const wishListRoutes = require('./routes/wishListRoutes');
-const addressRoutes = require('./routes/addressRoutes');
+const mountRoutes = require('./routes');
 
 const app = express();
 
@@ -29,14 +22,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/api/v1/category', categoryRoutes);
-app.use('/api/v1/subcategory', subCatRoutes);
-app.use('/api/v1/brand', brandRoutes);
-app.use('/api/v1/product', productRoutes);
-app.use('/api/v1/user', userRoutes);
-app.use('/api/v1/review', reviewRoutes);
-app.use('/api/v1/wishlist', wishListRoutes);
-app.use('/api/v1/address', addressRoutes);
+mountRoutes(app);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!!`, 404));
