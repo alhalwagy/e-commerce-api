@@ -71,6 +71,22 @@ const userSchema = new mongoose.Schema(
       default: true,
       select: false,
     },
+    wishList: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Product',
+      },
+    ],
+    addresses: [
+      {
+        id: { type: mongoose.Schema.Types.ObjectId },
+        alias: String,
+        details: String,
+        phone: String,
+        city: String,
+        postalCode: String,
+      },
+    ],
   },
   {
     timestamps: true,
@@ -81,7 +97,6 @@ userSchema.pre('save', function (next) {
   this.slug = slugify(this.name);
   next();
 });
-
 
 userSchema.pre(/^find/, function (next) {
   //this points for current query
