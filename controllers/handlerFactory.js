@@ -28,6 +28,9 @@ exports.getAll = (Model, searchModelName) =>
     if (req.params.categoryId) {
       filter = { categoryId: req.params.categoryId };
     }
+    if(req.filterObj){
+      filter = req.filterObj
+    }
     const features = new APIFeatures(Model.find(filter), req.query)
       .paginate(await Model.countDocuments())
       .sort()
