@@ -6,6 +6,9 @@ const orderController = require('../controllers/orderController');
 const router = express.Router();
 
 router.use(authController.protect);
+
+router.get('/create-checkout-session/:cartId', orderController.checkOutSession);
+
 router
   .route('/')
   .get(orderController.GetAllOrderForLoggedUser, orderController.getAllOrders);

@@ -1,3 +1,5 @@
+/* eslint-disable import/no-extraneous-dependencies */
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const Order = require('../models/orderModel');
@@ -97,5 +99,48 @@ exports.UpdateOrderToDelivered = catchAsync(async (req, res, next) => {
     data: {
       order,
     },
+  });
+});
+
+exports.checkOutSession = catchAsync(async (req, res, next) => {
+  const taxPrice = 0;
+  const shippingPrice = 0;
+  //1) Get CardItem  From Cart Model passed on cartId
+  const cart = await Cart.findById(req.params.cartId);
+  if (!cart) {
+    return next(new AppError('Cart Not Found With This Id', 404));
+  }
+  console.log(cart);
+  //2) Get order price Based On Cart price and Check if coupon Applied (taxPrice:0,ShippingPrice:0)
+  const orderPrice = cart.totalPriceAfterDiscount
+    ? cart.totalPriceAfterDiscount
+    : cart.totalCartPrice;
+  const totalOrderPrice = orderPrice + taxPrice + shippingPrice;
+  //Create Stripe Session
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price_data: {
+          currency: 'egp',
+          unit_amount: Math.round(totalOrderPrice * 100),
+          product_data: {
+            name: `${req.user.name}`,
+          },
+        },
+
+        quantity: 1,
+      },
+    ],
+    mode: 'payment',
+    success_url: `${req.protocol}://${req.get('host')}/order`,
+    cancel_url: `${req.protocol}://${req.get('host')}/cart`,
+    customer_email: req.user.email,
+    client_reference_id: cart._id,
+    metadata: req.body.shippingAddress,
+  });
+  //Send Session
+  res.status(200).json({
+    status: 'success',
+    session,
   });
 });
