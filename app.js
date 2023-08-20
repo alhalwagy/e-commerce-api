@@ -3,12 +3,19 @@ const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const compression = require('compression');
 
 const AppError = require('./utils/appError');
 const errorController = require('./controllers/errorController');
 const mountRoutes = require('./routes');
 
 const app = express();
+
+app.use(cors());
+app.options('*', cors());
+
+app.use(compression());
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
